@@ -7,9 +7,7 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		http.NotFound(w, req)
-	})
+	mux.Handle("/", http.FileServer(http.Dir(".")))
 
 	server := http.Server{
 		Handler: mux,
