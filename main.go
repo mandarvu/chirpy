@@ -56,11 +56,11 @@ func main() {
 		r.Write([]byte("OK"))
 	}
 
-	mux.HandleFunc("/healthz", statusHandler)
+	mux.HandleFunc("GET /healthz", statusHandler)
 
-	mux.Handle("/metrics", conf.metricHandler())
+	mux.Handle("GET /metrics", conf.metricHandler())
 
-	mux.Handle("/reset", conf.metricReset())
+	mux.Handle("POST /reset", conf.metricReset())
 
 	server := http.Server{
 		Handler: mux,
