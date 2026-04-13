@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"sync/atomic"
 )
@@ -16,12 +17,30 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
+func (cfg *apiConfig) metricHandler() http.Handler {
+	return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
+		output := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
+
+		r.Header().Add("Content-type", "text/plain; charset=utf-8")
+		r.WriteHeader(200)
+		r.Write([]byte(output))
+	})
+}
+
+func (cfg *apiConfig) metricReset() http.Handler {
+	cfg.fileServerHits.Swap(0)
+	return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
+		output := fmt.Sprintf("Hits: %d\nResetting counter", cfg.fileServerHits.Load())
+		r.Header().Add("Content-type", "text/plain; charset=utf-8")
+		r.WriteHeader(200)
+		r.Write([]byte(output))
+	})
+}
+
 func main() {
 	mux := http.NewServeMux()
 
-	conf := apiConfig{
-		fileServerHits: atomic.Int32{},
-	}
+	conf := apiConfig{}
 
 	dirHandler := func(dir string) http.Handler {
 		return http.StripPrefix("/"+dir, http.FileServer(http.Dir("./"+dir)))
@@ -38,6 +57,10 @@ func main() {
 	}
 
 	mux.HandleFunc("/healthz", statusHandler)
+
+	mux.Handle("/metrics", conf.metricHandler())
+
+	mux.Handle("/reset", conf.metricReset())
 
 	server := http.Server{
 		Handler: mux,
