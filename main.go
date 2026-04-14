@@ -9,13 +9,13 @@ type apiConfig struct {
 	fileServerHits atomic.Int32
 }
 
+func dirHandler(dir string) http.Handler {
+	return http.StripPrefix("/"+dir, http.FileServer(http.Dir("./"+dir)))
+}
+
 func main() {
 	mux := http.NewServeMux()
 	conf := apiConfig{}
-
-	dirHandler := func(dir string) http.Handler {
-		return http.StripPrefix("/"+dir, http.FileServer(http.Dir("./"+dir)))
-	}
 
 	mux.Handle("/app/", conf.middlewareMetricsInc(dirHandler("app")))
 	mux.Handle("/assets/", dirHandler("assets"))
