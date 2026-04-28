@@ -16,6 +16,11 @@ type params struct {
 	Email     string    `json:"email"`
 }
 
+type chirpData struct {
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
 func (cfg *APIConfig) createUser() http.Handler {
 	return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
 		decoder := json.NewDecoder(req.Body)
@@ -55,4 +60,15 @@ func (cfg *APIConfig) dbReset() http.Handler {
 			respondWithError(r, 403, "403 Forbidden", fmt.Errorf("Error"))
 		}
 	})
+}
+
+func (cfg *APIConfig) createChirp() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			decoder := json.NewDecoder(req.Body)
+
+			requestParams := chirpData{}
+			err := decoder.Buffered(&requestParams)
+		},
+	)
 }
