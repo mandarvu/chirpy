@@ -99,6 +99,9 @@ func (cfg *APIConfig) createChirp() http.Handler {
 			}
 
 			respondWithJSON(r, 201, chirpData{
+				ID: chirp.ID,
+				CreatedAt: chirp.CreatedAt,
+				UpdateAt: chirp.UpdatedAt,
 				Body:   chirp.Body,
 				UserID: chirp.UserID,
 			})
@@ -106,29 +109,53 @@ func (cfg *APIConfig) createChirp() http.Handler {
 	)
 }
 
-func (cfg *APIConfig) getAllChirps() http.Handler {
+func (cfg *APIConfig) getChirps() http.Handler {
 	return http.HandlerFunc(
 		func(r http.ResponseWriter, req *http.Request) {
-		    chirps, err := cfg.db.GetAllChirps(req.Context())
+			chirpID := req.PathValue("ChirpID")
 
-		    if err != nil {
-		        respondWithError(r, 400, "could not get all chirps", err)
-		        return
-		    } 
+			if chirpID != "" {
+				chirpUUID, err := uuid.Parse(chirpID)
+				if err != nil {
+					respondWithError(r, 400, "could not parse uuid for chirp", err)
+					return
+				}
 
-		    output := []chirpData{}
+				chirp, err := cfg.db.GetChirpFromID(req.Context(), chirpUUID)
+				if err != nil {
+					respondWithError(r, 404, "Chirp not found", err)
+					return
+				}
 
-            for _, c := range chirps {
-                output = append(output, chirpData{
-                    ID: c.ID,
-                    CreatedAt: c.CreatedAt,
-                    UpdateAt: c.UpdatedAt,
-                    Body: c.Body,
-                    UserID: c.UserID,
-                })
-            }
+				respondWithJSON(r, 200, chirpData{
+					ID:        chirp.ID,
+					CreatedAt: chirp.CreatedAt,
+					UpdateAt:  chirp.CreatedAt,
+					Body:      chirp.Body,
+					UserID:    chirp.UserID,
+				})
+				return
+			} else {
+				chirps, err := cfg.db.GetAllChirps(req.Context())
+				if err != nil {
+					respondWithError(r, 400, "could not get all chirps", err)
+					return
+				}
 
-            respondWithJSON(r, 200, output)
+				output := []chirpData{}
+
+				for _, c := range chirps {
+					output = append(output, chirpData{
+						ID:        c.ID,
+						CreatedAt: c.CreatedAt,
+						UpdateAt:  c.UpdatedAt,
+						Body:      c.Body,
+						UserID:    c.UserID,
+					})
+				}
+
+				respondWithJSON(r, 200, output)
+			}
 		},
 	)
 }
