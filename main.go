@@ -45,6 +45,7 @@ func main() {
 	mux.Handle("POST /admin/reset", conf.dbReset())
 	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
 	mux.Handle("POST /api/users", conf.createUser())
+	mux.Handle("POST /api/chirps", conf.createChirp())
 
 	server := http.Server{
 		Handler: mux,

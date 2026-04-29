@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mandarvu/chirpy/internal/database"
 )
 
 type userData struct {
@@ -29,11 +31,13 @@ func (cfg *APIConfig) createUser() http.Handler {
 		err := decoder.Decode(&p)
 		if err != nil {
 			respondWithError(r, 402, "Could not parse reques", err)
+			return
 		}
 
 		user, err := cfg.db.CreateUser(req.Context(), p.Email)
 		if err != nil {
 			respondWithError(r, 400, "could not create user", err)
+			return
 		} else {
 			jsonToReturn := userData{
 				UUID:      user.ID,
@@ -54,6 +58,7 @@ func (cfg *APIConfig) dbReset() http.Handler {
 			err := cfg.db.DeleteAllUsers(req.Context())
 			if err != nil {
 				respondWithError(r, 400, "Could not empty db", err)
+				return
 			}
 			respondWithJSON(r, 200, `{}`)
 		} else {
@@ -68,7 +73,54 @@ func (cfg *APIConfig) createChirp() http.Handler {
 			decoder := json.NewDecoder(req.Body)
 
 			requestParams := chirpData{}
-			err := decoder.Buffered(&requestParams)
+			err := decoder.Decode(&requestParams)
+			if err != nil {
+				respondWithError(r, 400, "Invalid parameters", err)
+				return
+			}
+
+			if validateChirpLen(requestParams.Body) {
+				requestParams.Body = cleanChirp(requestParams.Body)
+			} else {
+				respondWithError(r, 400, "Chirp length too much", fmt.Errorf("chirp too large"))
+				return
+			}
+
+			chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{
+				Body:   requestParams.Body,
+				UserID: requestParams.UserID,
+			})
+			if err != nil {
+				respondWithError(r, 400, "Could not create chirp", err)
+				return 
+			}
+
+			respondWithJSON(r, 201, chirpData{
+				Body:   chirp.Body,
+				UserID: chirp.UserID,
+			})
 		},
 	)
+}
+
+func validateChirpLen(chirp string) bool {
+	return len(chirp) <= 140
+}
+
+func cleanChirp(chirp string) string {
+	profane := map[string]string{
+		"kerfuffle": "",
+		"sharbert":  "",
+		"fornax":    "",
+	}
+
+	cleanedBody := []string{}
+
+	for word := range strings.SplitSeq(chirp, " ") {
+		if _, ok := profane[strings.ToLower(word)]; ok {
+			word = "****"
+		}
+		cleanedBody = append(cleanedBody, word)
+	}
+	return strings.Join(cleanedBody, " ")
 }
