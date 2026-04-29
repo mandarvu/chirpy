@@ -19,8 +19,11 @@ type userData struct {
 }
 
 type chirpData struct {
-	Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdateAt  time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 func (cfg *APIConfig) createUser() http.Handler {
@@ -92,13 +95,40 @@ func (cfg *APIConfig) createChirp() http.Handler {
 			})
 			if err != nil {
 				respondWithError(r, 400, "Could not create chirp", err)
-				return 
+				return
 			}
 
 			respondWithJSON(r, 201, chirpData{
 				Body:   chirp.Body,
 				UserID: chirp.UserID,
 			})
+		},
+	)
+}
+
+func (cfg *APIConfig) getAllChirps() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+		    chirps, err := cfg.db.GetAllChirps(req.Context())
+
+		    if err != nil {
+		        respondWithError(r, 400, "could not get all chirps", err)
+		        return
+		    } 
+
+		    output := []chirpData{}
+
+            for _, c := range chirps {
+                output = append(output, chirpData{
+                    ID: c.ID,
+                    CreatedAt: c.CreatedAt,
+                    UpdateAt: c.UpdatedAt,
+                    Body: c.Body,
+                    UserID: c.UserID,
+                })
+            }
+
+            respondWithJSON(r, 200, output)
 		},
 	)
 }

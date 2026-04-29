@@ -46,7 +46,8 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
 	mux.Handle("POST /api/users", conf.createUser())
 	mux.Handle("POST /api/chirps", conf.createChirp())
-
+    mux.Handle("GET /api/chirps", conf.getAllChirps())
+    
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",
