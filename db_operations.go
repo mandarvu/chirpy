@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type params struct {
+type userData struct {
 	UUID      uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -25,7 +25,7 @@ func (cfg *APIConfig) createUser() http.Handler {
 	return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
 		decoder := json.NewDecoder(req.Body)
 
-		p := params{}
+		p := userData{}
 		err := decoder.Decode(&p)
 		if err != nil {
 			respondWithError(r, 402, "Could not parse reques", err)
@@ -35,7 +35,7 @@ func (cfg *APIConfig) createUser() http.Handler {
 		if err != nil {
 			respondWithError(r, 400, "could not create user", err)
 		} else {
-			jsonToReturn := params{
+			jsonToReturn := userData{
 				UUID:      user.ID,
 				CreatedAt: user.CreatedAt,
 				UpdatedAt: user.UpdatedAt,
