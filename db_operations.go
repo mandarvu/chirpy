@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mandarvu/chirpy/internal/auth"
 	"github.com/mandarvu/chirpy/internal/database"
 )
 
@@ -30,14 +31,36 @@ func (cfg *APIConfig) createUser() http.Handler {
 	return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
 		decoder := json.NewDecoder(req.Body)
 
-		p := userData{}
+		p := struct {
+			Email   string `json:"email"`
+			Pasword string `json:"password"`
+		}{}
+
 		err := decoder.Decode(&p)
 		if err != nil {
 			respondWithError(r, 402, "Could not parse reques", err)
 			return
 		}
 
-		user, err := cfg.db.CreateUser(req.Context(), p.Email)
+		if p.Pasword == "" {
+			respondWithError(r, 400, "Password not provided", fmt.Errorf("no password provided in request"))
+			return
+		}
+
+		hashedPassword, err := auth.HashPassword(p.Pasword)
+		if err != nil {
+			respondWithError(r, 400, "Could not hash password", err)
+			return
+		}
+
+		user, err := cfg.db.CreateUser(
+		    req.Context(), 
+		    database.CreateUserParams{
+		        Email: p.Email,
+		        HashedPassword: hashedPassword,
+		    },
+		)
+
 		if err != nil {
 			respondWithError(r, 400, "could not create user", err)
 			return
@@ -99,11 +122,11 @@ func (cfg *APIConfig) createChirp() http.Handler {
 			}
 
 			respondWithJSON(r, 201, chirpData{
-				ID: chirp.ID,
+				ID:        chirp.ID,
 				CreatedAt: chirp.CreatedAt,
-				UpdateAt: chirp.UpdatedAt,
-				Body:   chirp.Body,
-				UserID: chirp.UserID,
+				UpdateAt:  chirp.UpdatedAt,
+				Body:      chirp.Body,
+				UserID:    chirp.UserID,
 			})
 		},
 	)
