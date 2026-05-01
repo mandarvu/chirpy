@@ -43,7 +43,6 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", statusHandler)
 	mux.Handle("GET /admin/metrics", conf.metricHandler())
 	mux.Handle("POST /admin/reset", conf.dbReset())
-	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
 	mux.Handle("POST /api/users", conf.createUser())
 	mux.Handle("POST /api/chirps", conf.createChirp())
     mux.Handle("GET /api/chirps/{ChirpID}", conf.getChirps())

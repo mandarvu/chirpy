@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,11 +53,11 @@ func (cfg *APIConfig) createUser() http.Handler {
 		}
 
 		user, err := cfg.db.CreateUser(
-		    req.Context(), 
-		    database.CreateUserParams{
-		        Email: p.Email,
-		        HashedPassword: hashedPassword,
-		    },
+			req.Context(),
+			database.CreateUserParams{
+				Email:          p.Email,
+				HashedPassword: hashedPassword,
+			},
 		)
 
 		if err != nil {
@@ -181,26 +180,4 @@ func (cfg *APIConfig) getChirps() http.Handler {
 			}
 		},
 	)
-}
-
-func validateChirpLen(chirp string) bool {
-	return len(chirp) <= 140
-}
-
-func cleanChirp(chirp string) string {
-	profane := map[string]string{
-		"kerfuffle": "",
-		"sharbert":  "",
-		"fornax":    "",
-	}
-
-	cleanedBody := []string{}
-
-	for word := range strings.SplitSeq(chirp, " ") {
-		if _, ok := profane[strings.ToLower(word)]; ok {
-			word = "****"
-		}
-		cleanedBody = append(cleanedBody, word)
-	}
-	return strings.Join(cleanedBody, " ")
 }
