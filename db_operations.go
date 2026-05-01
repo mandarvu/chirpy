@@ -181,3 +181,44 @@ func (cfg *APIConfig) getChirps() http.Handler {
 		},
 	)
 }
+
+func (cfg *APIConfig) loginUser() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			d := json.NewDecoder(req.Body)
+
+			p := struct {
+				Email    string `json:"email"`
+				Password string `json:"password"`
+			}{}
+
+			err := d.Decode(&p)
+			if err != nil {
+				respondWithError(r, 400, "could not parse request", err)
+				return
+			}
+
+			user, userErr := cfg.db.GetUserFromEmail(req.Context(), p.Email)
+
+			if userErr != nil {
+				respondWithError(r, 401, "Unauthorized", userErr)
+				return
+			}
+
+			passCheck, passErr := auth.CheckPasswordHash(p.Password, user.HashedPassword)
+
+			if passErr != nil || !passCheck {
+				respondWithError(r, 401, "Unauthorized", passErr)
+				return
+			}
+
+
+			respondWithJSON(r, 200, userData{
+			    UUID: user.ID,
+			    CreatedAt: user.CreatedAt,
+			    UpdatedAt: user.UpdatedAt,
+			    Email: user.Email,
+			})
+		},
+	)
+}
