@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -16,6 +17,7 @@ type userData struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	JWT       string    `json:"token,omitempty"`
 }
 
 type chirpData struct {
@@ -104,6 +106,21 @@ func (cfg *APIConfig) createChirp() http.Handler {
 				return
 			}
 
+			bearerToken, err := auth.GetBearerToken(req.Header)
+			if err != nil {
+				respondWithError(r, 400, "bearer token not found", err)
+				return
+			}
+
+			log.Printf("jwt secret loaded: %q", cfg.jwtSecret)
+			userID, err := auth.ValidateJWT(bearerToken, cfg.jwtSecret)
+			if err != nil {
+				respondWithError(r, 401, "user could not be authenticated", err)
+				return
+			}
+
+			requestParams.UserID = userID
+
 			if validateChirpLen(requestParams.Body) {
 				requestParams.Body = cleanChirp(requestParams.Body)
 			} else {
@@ -185,11 +202,13 @@ func (cfg *APIConfig) getChirps() http.Handler {
 func (cfg *APIConfig) loginUser() http.Handler {
 	return http.HandlerFunc(
 		func(r http.ResponseWriter, req *http.Request) {
+			const defaultExpirationTime = 3600
 			d := json.NewDecoder(req.Body)
 
 			p := struct {
-				Email    string `json:"email"`
-				Password string `json:"password"`
+				Email     string `json:"email"`
+				Password  string `json:"password"`
+				ExpiresIn int    `json:"expires_in_seconds"`
 			}{}
 
 			err := d.Decode(&p)
@@ -212,12 +231,24 @@ func (cfg *APIConfig) loginUser() http.Handler {
 				return
 			}
 
+			if p.ExpiresIn == 0 || p.ExpiresIn >= 3600 {
+				p.ExpiresIn = defaultExpirationTime
+			}
+
+			log.Printf("jwt secret loaded: %q", cfg.jwtSecret)
+			log.Printf("expires in: %d seconds", p.ExpiresIn)
+			jwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Second * time.Duration(p.ExpiresIn))
+			if err != nil {
+				respondWithError(r, 400, "Could not create jwt", err)
+				return
+			}
 
 			respondWithJSON(r, 200, userData{
-			    UUID: user.ID,
-			    CreatedAt: user.CreatedAt,
-			    UpdatedAt: user.UpdatedAt,
-			    Email: user.Email,
+				UUID:      user.ID,
+				CreatedAt: user.CreatedAt,
+				UpdatedAt: user.UpdatedAt,
+				Email:     user.Email,
+				JWT:       jwtToken,
 			})
 		},
 	)
