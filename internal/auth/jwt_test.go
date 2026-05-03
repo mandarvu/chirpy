@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -62,4 +63,52 @@ func TestMakeJWT(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	header1 := http.Header{}
+	header1.Add("Authorization", "Bearer token1")
+
+	header2 := http.Header{}
+
+	tests := []struct {
+		name     string
+		input    http.Header
+		expected string
+		isErr    bool
+	}{
+		{
+			name:     "Non empty token",
+			input:    header1,
+			expected: "token1",
+			isErr:    false,
+		},
+		{
+			name:     "Empty token",
+			input:    header2,
+			expected: "",
+			isErr:    true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			token, err := GetBearerToken(test.input)
+			if test.isErr {
+				if err == nil {
+					t.Fatal("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("failed to get bearer token: %v", err)
+			}
+
+			if token != test.expected {
+				t.Errorf("expected token %v, got %v", test.expected, token)
+			}
+		})
+	}	
+
 }
