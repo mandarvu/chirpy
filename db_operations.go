@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,11 +14,12 @@ import (
 )
 
 type userData struct {
-	UUID      uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	JWT       string    `json:"token,omitempty"`
+	UUID         uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	JWT          string    `json:"token,omitempty"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
 }
 
 type chirpData struct {
@@ -206,9 +208,8 @@ func (cfg *APIConfig) loginUser() http.Handler {
 			d := json.NewDecoder(req.Body)
 
 			p := struct {
-				Email     string `json:"email"`
-				Password  string `json:"password"`
-				ExpiresIn int    `json:"expires_in_seconds"`
+				Email    string `json:"email"`
+				Password string `json:"password"`
 			}{}
 
 			err := d.Decode(&p)
@@ -231,24 +232,33 @@ func (cfg *APIConfig) loginUser() http.Handler {
 				return
 			}
 
-			if p.ExpiresIn == 0 || p.ExpiresIn >= 3600 {
-				p.ExpiresIn = defaultExpirationTime
+			refreshToken := auth.MakeRefreshToken()
+
+			refToken, err := cfg.db.CreateRefreshToken(req.Context(), database.CreateRefreshTokenParams{
+				Token:  refreshToken,
+				UserID: user.ID,
+				ExpiresAt: sql.NullTime{
+					Time:  time.Now().Add(time.Hour * 60 * 24), // 60 days = 60 x 24 hours
+					Valid: true,
+				},
+			})
+			if err != nil {
+				respondWithError(r, 400, "could not add refresh token", err)
 			}
 
-			log.Printf("jwt secret loaded: %q", cfg.jwtSecret)
-			log.Printf("expires in: %d seconds", p.ExpiresIn)
-			jwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Second * time.Duration(p.ExpiresIn))
+			jwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Second*time.Duration(defaultExpirationTime))
 			if err != nil {
 				respondWithError(r, 400, "Could not create jwt", err)
 				return
 			}
 
 			respondWithJSON(r, 200, userData{
-				UUID:      user.ID,
-				CreatedAt: user.CreatedAt,
-				UpdatedAt: user.UpdatedAt,
-				Email:     user.Email,
-				JWT:       jwtToken,
+				UUID:         user.ID,
+				CreatedAt:    user.CreatedAt,
+				UpdatedAt:    user.UpdatedAt,
+				Email:        user.Email,
+				JWT:          jwtToken,
+				RefreshToken: refToken.Token,
 			})
 		},
 	)
