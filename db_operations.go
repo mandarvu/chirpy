@@ -13,6 +13,8 @@ import (
 	"github.com/mandarvu/chirpy/internal/database"
 )
 
+const defaultExpirationTime = 3600
+
 type userData struct {
 	UUID         uuid.UUID `json:"id"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -204,7 +206,6 @@ func (cfg *APIConfig) getChirps() http.Handler {
 func (cfg *APIConfig) loginUser() http.Handler {
 	return http.HandlerFunc(
 		func(r http.ResponseWriter, req *http.Request) {
-			const defaultExpirationTime = 3600
 			d := json.NewDecoder(req.Body)
 
 			p := struct {
@@ -297,6 +298,34 @@ func (cfg *APIConfig) refreshJWTFromRefreshToken() http.Handler {
 			}{
 				Token: jwt,
 			})
+		},
+	)
+}
+
+func (cfg *APIConfig) revokeRefreshToken() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			bearerToken, err := auth.GetBearerToken(req.Header)
+			if err != nil {
+				respondWithError(r, 400, "bearer token not found", err)
+				return
+			}
+
+			err = cfg.db.RevokeRefreshToken(req.Context(), database.RevokeRefreshTokenParams{
+				Token:     bearerToken,
+				UpdatedAt: time.Now(),
+				RevokedAt: sql.NullTime{
+					Time:  time.Now(),
+					Valid: true,
+				},
+			})
+			log.Printf("Revoke query executed")
+			if err != nil {
+				respondWithError(r, 400, "Could not revoke", err)
+				return
+			}
+
+			respondWithJSON(r, 204, struct{}{})
 		},
 	)
 }
