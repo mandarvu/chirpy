@@ -329,3 +329,57 @@ func (cfg *APIConfig) revokeRefreshToken() http.Handler {
 		},
 	)
 }
+
+func (cfg *APIConfig) updateUserRecords() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			bearerToken, err := auth.GetBearerToken(req.Header)
+			if err != nil {
+				respondWithError(r, 401, "could not get bearer token", err)
+				return
+			}
+
+			userID, err := auth.ValidateJWT(bearerToken, cfg.jwtSecret)
+			if err != nil {
+				respondWithError(r, 401, "user unauthorized", err)
+				return
+			}
+
+			p := struct {
+				Email    string `json:"email"`
+				Password string `json:"password"`
+			}{}
+
+			decoder := json.NewDecoder(req.Body)
+			err = decoder.Decode(&p)
+			if err != nil {
+				respondWithError(r, 401, "could not parse body", err)
+				return
+			}
+
+			hashPass, err := auth.HashPassword(p.Password)
+			if err != nil {
+				respondWithError(r, 401, "could not hash password", err)
+				return
+			}
+
+			userDetails, err := cfg.db.UpdateUserRecords(req.Context(), database.UpdateUserRecordsParams{
+				ID:             userID,
+				Email:          p.Email,
+				HashedPassword: hashPass,
+				UpdatedAt:      time.Now(),
+			})
+			if err != nil {
+				respondWithError(r, 401, "could not update data", err)
+				return
+			}
+
+			respondWithJSON(r, 200, userData{
+				UUID: userDetails.ID,
+				CreatedAt: userDetails.CreatedAt,
+				UpdatedAt: userDetails.UpdatedAt,
+                Email: userDetails.Email,
+			})
+		},
+	)
+}

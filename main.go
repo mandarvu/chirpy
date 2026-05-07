@@ -53,6 +53,7 @@ func main() {
 	mux.Handle("POST /api/login", conf.loginUser())
 	mux.Handle("POST /api/refresh", conf.refreshJWTFromRefreshToken())
 	mux.Handle("POST /api/revoke", conf.revokeRefreshToken())
+	mux.Handle("PUT /api/users", conf.updateUserRecords())
 
 	server := http.Server{
 		Handler: mux,
