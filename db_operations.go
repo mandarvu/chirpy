@@ -263,3 +263,40 @@ func (cfg *APIConfig) loginUser() http.Handler {
 		},
 	)
 }
+
+func (cfg *APIConfig) refreshJWTFromRefreshToken() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			bearerToken, err := auth.GetBearerToken(req.Header)
+			if err != nil {
+				respondWithError(r, 400, "bearer token not found", err)
+				return
+			}
+
+			tokenData, err := cfg.db.GetDataFromRefreshToken(req.Context(), bearerToken)
+			if err != nil {
+				respondWithError(r, 401, "refresh token not found", err)
+				return
+			}
+
+			// HACK: The timestampm comparison below returns 1 if the input time to
+			// the method is after the time being operated on. otherwise -1 and 0 if same.
+			if tokenData.ExpiresAt.Time.Compare(time.Now()) == -1 || tokenData.RevokedAt.Valid {
+				respondWithError(r, 401, "refresh token expired or revoked", fmt.Errorf("refresh token expired or revoked"))
+				return
+			}
+
+			jwt, err := auth.MakeJWT(tokenData.UserID, cfg.jwtSecret, time.Duration(time.Hour))
+			if err != nil {
+				respondWithError(r, 400, "could not create jwt", err)
+				return
+			}
+
+			respondWithJSON(r, 200, struct {
+				Token string `json:"token"`
+			}{
+				Token: jwt,
+			})
+		},
+	)
+}

@@ -51,6 +51,7 @@ func main() {
 	mux.Handle("POST /api/chirps", conf.createChirp())
 	mux.Handle("GET /api/chirps/{ChirpID}", conf.getChirps())
 	mux.Handle("POST /api/login", conf.loginUser())
+	mux.Handle("POST /api/refresh", conf.refreshJWTFromRefreshToken())
 
 	server := http.Server{
 		Handler: mux,
