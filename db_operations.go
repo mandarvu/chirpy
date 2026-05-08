@@ -439,3 +439,49 @@ func (cfg *APIConfig) deleteChirpFromID() http.Handler {
 		},
 	)
 }
+
+func (cfg *APIConfig) upgradeUserToChirpyRed() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			p := struct {
+				Event string `json:"event"`
+				Data  struct {
+					UserID string `json:"user_id"`
+				} `json:"data"`
+			}{}
+
+			decoder := json.NewDecoder(req.Body)
+
+			err := decoder.Decode(&p)
+			if err != nil {
+				respondWithError(r, 403, "request malformed", err)
+				return
+			}
+
+			if p.Event != "user.upgraded" {
+				respondWithJSON(r, 204, struct{}{})
+				return
+			}
+
+			userUUID, err := uuid.Parse(p.Data.UserID)
+			if err != nil {
+				respondWithError(r, 400, "could not parse given UUID", err)
+				return
+			}
+
+			user, err := cfg.db.UpgradeUserChirpyRedStatus(req.Context(), userUUID)
+			if err != nil {
+				respondWithError(r, 404, "user cannot be found", err)
+				return
+			}
+
+			respondWithJSON(r, 204, userData{
+				UUID:        user.ID,
+				CreatedAt:   user.CreatedAt,
+				UpdatedAt:   user.UpdatedAt,
+				Email:       user.Email,
+				IsChirpyRed: user.IsChirpyRed,
+			})
+		},
+	)
+}
