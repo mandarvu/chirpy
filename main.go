@@ -18,6 +18,7 @@ type APIConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaKey       string
 }
 
 func dirHandler(dir string) http.Handler {
@@ -29,6 +30,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkakey := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -41,6 +43,7 @@ func main() {
 	conf.db = database.New(db)
 	conf.platform = platform
 	conf.jwtSecret = jwtSecret
+	conf.polkaKey = polkakey
 
 	mux.Handle("/app/", conf.middlewareMetricsInc(dirHandler("app")))
 	mux.Handle("/assets/", dirHandler("assets"))

@@ -443,6 +443,17 @@ func (cfg *APIConfig) deleteChirpFromID() http.Handler {
 func (cfg *APIConfig) upgradeUserToChirpyRed() http.Handler {
 	return http.HandlerFunc(
 		func(r http.ResponseWriter, req *http.Request) {
+			apikey, err := auth.GetAPIKey(req.Header)
+			if err != nil {
+				respondWithError(r, 401, "api key not found", err)
+				return
+			}
+
+			if apikey != cfg.polkaKey {
+				respondWithError(r, 401, "api key mismatch", err)
+				return
+			}
+
 			p := struct {
 				Event string `json:"event"`
 				Data  struct {
@@ -452,7 +463,7 @@ func (cfg *APIConfig) upgradeUserToChirpyRed() http.Handler {
 
 			decoder := json.NewDecoder(req.Body)
 
-			err := decoder.Decode(&p)
+			err = decoder.Decode(&p)
 			if err != nil {
 				respondWithError(r, 403, "request malformed", err)
 				return
