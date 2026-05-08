@@ -54,6 +54,7 @@ func main() {
 	mux.Handle("POST /api/refresh", conf.refreshJWTFromRefreshToken())
 	mux.Handle("POST /api/revoke", conf.revokeRefreshToken())
 	mux.Handle("PUT /api/users", conf.updateUserRecords())
+	mux.Handle("DELETE /api/chirps/{ChirpID}", conf.deleteChirpFromID())
 
 	server := http.Server{
 		Handler: mux,

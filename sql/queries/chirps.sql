@@ -21,3 +21,7 @@ SELECT
     user_id
 FROM chirps
 WHERE id = $1;
+
+-- name: DeleteChirpFromID :exec
+DELETE FROM chirps
+WHERE id = $1 AND user_id = $2;

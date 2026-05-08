@@ -375,11 +375,64 @@ func (cfg *APIConfig) updateUserRecords() http.Handler {
 			}
 
 			respondWithJSON(r, 200, userData{
-				UUID: userDetails.ID,
+				UUID:      userDetails.ID,
 				CreatedAt: userDetails.CreatedAt,
 				UpdatedAt: userDetails.UpdatedAt,
-                Email: userDetails.Email,
+				Email:     userDetails.Email,
 			})
+		},
+	)
+}
+
+func (cfg *APIConfig) deleteChirpFromID() http.Handler {
+	return http.HandlerFunc(
+		func(r http.ResponseWriter, req *http.Request) {
+			bearerToken, err := auth.GetBearerToken(req.Header)
+			if err != nil {
+				respondWithError(r, 401, "could not get bearer token", err)
+				return
+			}
+
+			userID, err := auth.ValidateJWT(bearerToken, cfg.jwtSecret)
+			if err != nil {
+				respondWithError(r, 400, "could not authenticate jwt", err)
+				return
+			}
+
+			chirpID := req.PathValue("ChirpID")
+
+			if chirpID == "" {
+				respondWithError(r, 400, "chirp ID not provided", fmt.Errorf("chirp ID required for deletion"))
+				return
+			}
+
+			chirpUUID, err := uuid.Parse(chirpID)
+			if err != nil {
+				respondWithError(r, 400, "could not parse provided chirp id", err)
+				return
+			}
+
+			chirp, err := cfg.db.GetChirpFromID(req.Context(), chirpUUID)
+			if err != nil {
+				respondWithError(r, 404, "chirp not found", err)
+				return
+			}
+
+			if chirp.UserID != userID {
+				respondWithError(r, 403, "only author of chirp can delete chirp", fmt.Errorf("%s is not author of chirp %v", userID, chirpID))
+				return
+			}
+
+			err = cfg.db.DeleteChirpFromID(req.Context(), database.DeleteChirpFromIDParams{
+				ID:     chirp.ID,
+				UserID: chirp.UserID,
+			})
+			if err != nil {
+				respondWithError(r, 400, "could not delete chirp", err)
+				return
+			}
+
+			respondWithJSON(r, 204, struct{}{})
 		},
 	)
 }
