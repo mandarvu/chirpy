@@ -159,6 +159,7 @@ func (cfg *APIConfig) getChirps() http.Handler {
 		func(r http.ResponseWriter, req *http.Request) {
 			chirpID := req.PathValue("ChirpID")
 
+
 			if chirpID != "" {
 				chirpUUID, err := uuid.Parse(chirpID)
 				if err != nil {
@@ -181,7 +182,23 @@ func (cfg *APIConfig) getChirps() http.Handler {
 				})
 				return
 			} else {
-				chirps, err := cfg.db.GetAllChirps(req.Context())
+			    reqAuthorID := req.URL.Query().Get("author_id")
+			    
+			    reqUUID := uuid.NullUUID{}
+
+			    if reqAuthorID == "" {
+                    reqUUID.Valid  = false
+			    } else {
+			        if tmpUUID, err := uuid.Parse(reqAuthorID); err != nil {
+			            respondWithError(r, 400, "uuid invalid", err)
+			            return
+			        } else {
+			            reqUUID.UUID = tmpUUID
+			            reqUUID.Valid = true
+			        }
+			    }
+
+				chirps, err := cfg.db.GetAllChirps(req.Context(), reqUUID)
 				if err != nil {
 					respondWithError(r, 400, "could not get all chirps", err)
 					return

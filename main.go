@@ -53,6 +53,7 @@ func main() {
 	mux.Handle("POST /api/users", conf.createUser())
 	mux.Handle("POST /api/chirps", conf.createChirp())
 	mux.Handle("GET /api/chirps/{ChirpID}", conf.getChirps())
+	mux.Handle("GET /api/chirps/", conf.getChirps())
 	mux.Handle("POST /api/login", conf.loginUser())
 	mux.Handle("POST /api/refresh", conf.refreshJWTFromRefreshToken())
 	mux.Handle("POST /api/revoke", conf.revokeRefreshToken())
