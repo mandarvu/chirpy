@@ -20,6 +20,7 @@ type userData struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 	JWT          string    `json:"token,omitempty"`
 	RefreshToken string    `json:"refresh_token,omitempty"`
 }
@@ -71,10 +72,11 @@ func (cfg *APIConfig) createUser() http.Handler {
 			return
 		} else {
 			jsonToReturn := userData{
-				UUID:      user.ID,
-				CreatedAt: user.CreatedAt,
-				UpdatedAt: user.UpdatedAt,
-				Email:     user.Email,
+				UUID:        user.ID,
+				CreatedAt:   user.CreatedAt,
+				UpdatedAt:   user.UpdatedAt,
+				Email:       user.Email,
+				IsChirpyRed: user.IsChirpyRed,
 			}
 			respondWithJSON(r, 201, jsonToReturn)
 		}
@@ -258,6 +260,7 @@ func (cfg *APIConfig) loginUser() http.Handler {
 				CreatedAt:    user.CreatedAt,
 				UpdatedAt:    user.UpdatedAt,
 				Email:        user.Email,
+				IsChirpyRed:  user.IsChirpyRed,
 				JWT:          jwtToken,
 				RefreshToken: refToken.Token,
 			})
