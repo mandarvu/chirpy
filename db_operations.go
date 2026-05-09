@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -159,7 +160,6 @@ func (cfg *APIConfig) getChirps() http.Handler {
 		func(r http.ResponseWriter, req *http.Request) {
 			chirpID := req.PathValue("ChirpID")
 
-
 			if chirpID != "" {
 				chirpUUID, err := uuid.Parse(chirpID)
 				if err != nil {
@@ -182,21 +182,22 @@ func (cfg *APIConfig) getChirps() http.Handler {
 				})
 				return
 			} else {
-			    reqAuthorID := req.URL.Query().Get("author_id")
-			    
-			    reqUUID := uuid.NullUUID{}
+				reqAuthorID := req.URL.Query().Get("author_id")
+				sortOrder := req.URL.Query().Get("sort")
 
-			    if reqAuthorID == "" {
-                    reqUUID.Valid  = false
-			    } else {
-			        if tmpUUID, err := uuid.Parse(reqAuthorID); err != nil {
-			            respondWithError(r, 400, "uuid invalid", err)
-			            return
-			        } else {
-			            reqUUID.UUID = tmpUUID
-			            reqUUID.Valid = true
-			        }
-			    }
+				reqUUID := uuid.NullUUID{}
+
+				if reqAuthorID == "" {
+					reqUUID.Valid = false
+				} else {
+					if tmpUUID, err := uuid.Parse(reqAuthorID); err != nil {
+						respondWithError(r, 400, "uuid invalid", err)
+						return
+					} else {
+						reqUUID.UUID = tmpUUID
+						reqUUID.Valid = true
+					}
+				}
 
 				chirps, err := cfg.db.GetAllChirps(req.Context(), reqUUID)
 				if err != nil {
@@ -205,6 +206,12 @@ func (cfg *APIConfig) getChirps() http.Handler {
 				}
 
 				output := []chirpData{}
+
+				if sortOrder == "desc" {
+					sort.Slice(chirps, func(i, j int) bool {
+						return chirps[i].CreatedAt.Compare(chirps[j].CreatedAt) == 1
+					})
+				}
 
 				for _, c := range chirps {
 					output = append(output, chirpData{
