@@ -307,8 +307,8 @@ func (cfg *APIConfig) refreshJWTFromRefreshToken() http.Handler {
 				return
 			}
 
-			// HACK: The timestampm comparison below returns 1 if the input time to
-			// the method is after the time being operated on. otherwise -1 and 0 if same.
+			// HACK: The timestampm comparison below returns -1 if the input time to
+			// the method is after the time being operated on. otherwise 1 and 0 if same.
 			if tokenData.ExpiresAt.Time.Compare(time.Now()) == -1 || tokenData.RevokedAt.Valid {
 				respondWithError(r, 401, "refresh token expired or revoked", fmt.Errorf("refresh token expired or revoked"))
 				return
