@@ -39,22 +39,22 @@ func (cfg *APIConfig) createUser() http.Handler {
 		decoder := json.NewDecoder(req.Body)
 
 		p := struct {
-			Email   string `json:"email"`
-			Pasword string `json:"password"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}{}
 
 		err := decoder.Decode(&p)
 		if err != nil {
-			respondWithError(r, 402, "Could not parse reques", err)
+			respondWithError(r, 402, "Could not parse request", err)
 			return
 		}
 
-		if p.Pasword == "" {
+		if p.Password == "" {
 			respondWithError(r, 400, "Password not provided", fmt.Errorf("no password provided in request"))
 			return
 		}
 
-		hashedPassword, err := auth.HashPassword(p.Pasword)
+		hashedPassword, err := auth.HashPassword(p.Password)
 		if err != nil {
 			respondWithError(r, 400, "Could not hash password", err)
 			return
@@ -71,16 +71,15 @@ func (cfg *APIConfig) createUser() http.Handler {
 		if err != nil {
 			respondWithError(r, 400, "could not create user", err)
 			return
-		} else {
-			jsonToReturn := userData{
-				UUID:        user.ID,
-				CreatedAt:   user.CreatedAt,
-				UpdatedAt:   user.UpdatedAt,
-				Email:       user.Email,
-				IsChirpyRed: user.IsChirpyRed,
-			}
-			respondWithJSON(r, 201, jsonToReturn)
 		}
+
+		respondWithJSON(r, 201, userData{
+			UUID:        user.ID,
+			CreatedAt:   user.CreatedAt,
+			UpdatedAt:   user.UpdatedAt,
+			Email:       user.Email,
+			IsChirpyRed: user.IsChirpyRed,
+		})
 	})
 }
 
@@ -96,7 +95,7 @@ func (cfg *APIConfig) dbReset() http.Handler {
 			}
 			respondWithJSON(r, 200, `{}`)
 		} else {
-			respondWithError(r, 403, "403 Forbidden", fmt.Errorf("Error"))
+			respondWithError(r, 403, "403 Forbidden", fmt.Errorf("error"))
 		}
 	})
 }
@@ -181,50 +180,50 @@ func (cfg *APIConfig) getChirps() http.Handler {
 					UserID:    chirp.UserID,
 				})
 				return
-			} else {
-				reqAuthorID := req.URL.Query().Get("author_id")
-				sortOrder := req.URL.Query().Get("sort")
-
-				reqUUID := uuid.NullUUID{}
-
-				if reqAuthorID == "" {
-					reqUUID.Valid = false
-				} else {
-					if tmpUUID, err := uuid.Parse(reqAuthorID); err != nil {
-						respondWithError(r, 400, "uuid invalid", err)
-						return
-					} else {
-						reqUUID.UUID = tmpUUID
-						reqUUID.Valid = true
-					}
-				}
-
-				chirps, err := cfg.db.GetAllChirps(req.Context(), reqUUID)
-				if err != nil {
-					respondWithError(r, 400, "could not get all chirps", err)
-					return
-				}
-
-				output := []chirpData{}
-
-				if sortOrder == "desc" {
-					sort.Slice(chirps, func(i, j int) bool {
-						return chirps[i].CreatedAt.Compare(chirps[j].CreatedAt) == 1
-					})
-				}
-
-				for _, c := range chirps {
-					output = append(output, chirpData{
-						ID:        c.ID,
-						CreatedAt: c.CreatedAt,
-						UpdateAt:  c.UpdatedAt,
-						Body:      c.Body,
-						UserID:    c.UserID,
-					})
-				}
-
-				respondWithJSON(r, 200, output)
 			}
+
+			reqAuthorID := req.URL.Query().Get("author_id")
+			sortOrder := req.URL.Query().Get("sort")
+
+			reqUUID := uuid.NullUUID{}
+
+			if reqAuthorID == "" {
+				reqUUID.Valid = false
+			} else {
+				if tmpUUID, err := uuid.Parse(reqAuthorID); err != nil {
+					respondWithError(r, 400, "uuid invalid", err)
+					return
+				} else {
+					reqUUID.UUID = tmpUUID
+					reqUUID.Valid = true
+				}
+			}
+
+			chirps, err := cfg.db.GetAllChirps(req.Context(), reqUUID)
+			if err != nil {
+				respondWithError(r, 400, "could not get all chirps", err)
+				return
+			}
+
+			var output []chirpData
+
+			if sortOrder == "desc" {
+				sort.Slice(chirps, func(i, j int) bool {
+					return chirps[i].CreatedAt.Compare(chirps[j].CreatedAt) == 1
+				})
+			}
+
+			for _, c := range chirps {
+				output = append(output, chirpData{
+					ID:        c.ID,
+					CreatedAt: c.CreatedAt,
+					UpdateAt:  c.UpdatedAt,
+					Body:      c.Body,
+					UserID:    c.UserID,
+				})
+			}
+
+			respondWithJSON(r, 200, output)
 		},
 	)
 }
@@ -307,14 +306,14 @@ func (cfg *APIConfig) refreshJWTFromRefreshToken() http.Handler {
 				return
 			}
 
-			// HACK: The timestampm comparison below returns -1 if the input time to
+			// HACK: The timestamp comparison below returns -1 if the input time to
 			// the method is after the time being operated on. otherwise 1 and 0 if same.
 			if tokenData.ExpiresAt.Time.Compare(time.Now()) == -1 || tokenData.RevokedAt.Valid {
 				respondWithError(r, 401, "refresh token expired or revoked", fmt.Errorf("refresh token expired or revoked"))
 				return
 			}
 
-			jwt, err := auth.MakeJWT(tokenData.UserID, cfg.jwtSecret, time.Duration(time.Hour))
+			jwt, err := auth.MakeJWT(tokenData.UserID, cfg.jwtSecret, time.Hour)
 			if err != nil {
 				respondWithError(r, 400, "could not create jwt", err)
 				return
